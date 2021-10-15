@@ -34,6 +34,7 @@ def createMp3File(path):
      clip.audio.write_audiofile(path2, bitrate="320k")
      inputAlbumCover(path2)
      os.remove('cover.jpg')
+     clip.close()
    
    
 def init():
@@ -52,5 +53,6 @@ mp4_listed = [file for file in mp4_list if file.endswith(".mp4")]
 for i in mp4_listed:
      createCoverFile(i)
      createMp3File(i)
+     os.remove(i)
 
 print('done')
