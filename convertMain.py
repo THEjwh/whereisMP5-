@@ -13,6 +13,15 @@ from pytube import Playlist, YouTube
 
 import ytdlpfunc as ytf
 
+def delspecial(strs):
+     if strs.find('"') != -1:
+          strs = strs.replace('"', '˝')
+     if strs.find(':') != -1:
+          strs = strs.replace(':', '：')
+     if strs.find('/') != -1:
+          strs = strs.replace('/', '／')
+     
+     return strs
 
 def returnMetaDic(path):
      f = open(path, 'rt', encoding='UTF8')
@@ -33,6 +42,8 @@ def returnMetaDic(path):
                if p == 1:
                     artistname = artistname + ii
                     p = p + 1
+                    #참여 아티스트 태그에 다 넣으려 했는데 난잡해져서 대표 하나만 넣기로함
+                    break
                else:
                     artistname = artistname + '/' + ii
                
@@ -40,7 +51,7 @@ def returnMetaDic(path):
      dic = {
           'Songname' : songname,
           'Artistname' : artistname,
-          'Albumname' : desp[2],
+          'Albumname' : delspecial(desp[2]),
           #'Albumartistname' : desp[3].replace('℗ ', ''),
           #'Year' : year,
           #'Date' : date,
@@ -48,8 +59,37 @@ def returnMetaDic(path):
      
      #앨범아티스트 따로 없는 설명도 있어서
      sk = 0
+     desp[3] = delspecial(desp[3])
      if desp[3].find('℗ ') != -1:
-          dic['Albumartistname'] = desp[3].replace('℗ ', '')
+          desp[3] = desp[3].replace('℗ ', '')
+          
+          #일부 연도 + 배급사 이름이 적힌 경우 그냥 앨범아티스트 이름에 아티스트 이름넣기   
+          if desp[3].find('19') != -1:
+               b = 0
+               try:
+                    a = desp[3][desp[3].find('19'):desp[3].find('19') + 4]
+                    aa = int(a)
+               except ValueError:
+                    b = 1
+               
+               if b == 0:
+                    dic['Albumartistname'] = dic['Artistname']
+               else:
+                    dic['Albumartistname'] = desp[3]
+          elif desp[3].find('20') != -1:
+               b = 0
+               try:
+                    a = desp[3][desp[3].find('20'):desp[3].find('20') + 4]
+                    aa = int(a)
+               except ValueError:
+                    b = 1
+                    
+               if b == 0:
+                    dic['Albumartistname'] = dic['Artistname']
+               else:
+                    dic['Albumartistname'] = desp[3]
+          else:
+               dic['Albumartistname'] = desp[3]
      else:
           dic['Albumartistname'] = dic['Artistname']
           #3번째칸에 출시 날짜가 적혀있는 설명도 있어서
@@ -65,6 +105,7 @@ def returnMetaDic(path):
           abc = desp[4].replace('Released on: ', '')
           dic['Date'] = abc
           dic['Year'] = abc[:4]
+          
      f.close()
      
      return dic
@@ -151,11 +192,7 @@ def downloadPlaylist(getpath):
                first = 0
                lloc = lloc + '/' + metadic['Albumartistname'] + '/' + metadic['Albumname'] + '/'
                
-               #오류내는 특문 제거
-               if lloc.find('"') != -1:
-                    lloc = lloc.replace('"', '˝')
-               if lloc.find(':') != -1:
-                    lloc = lloc.replace(':', '：')
+          
           
           #반복한 횟수로 트랙 순서 넣기. 짜피 다운로드 받은 순서대로 이름앞에 순서 붙어서 정렬할필요없음
           metadic['Tracknum'] = i
@@ -250,4 +287,16 @@ elif choose == '3':
      
      print ('전부 완료!')
      f.close()
+elif choose == '0':
+     abc = '1910'
+     abcd = '19ab'
+     
+     print(abc.find('19'))
+     print(abc[abc.find('19'):abc.find('19') + 4])
+     print(int(abc[abc.find('19'):abc.find('19') + 4]))
+     
+     try:
+          print(int(abcd[abcd.find('19'):abcd.find('19') + 4]))
+     except ValueError:
+          print('swag')
      
