@@ -60,7 +60,8 @@ def downloadplaylist(path):
         'progress_hooks': [my_hook],
         'cookiesfrombrowser': ('firefox', ),
         'ffmpeg_location': 'C:/Users/user/Downloads/Compressed/ffmpeg-2021-10-14-git-c336c7a9d7-full_build/bin',
-        'outtmpl': './playlist/%(playlist_title)s/%(playlist_index)s.%(title)s.mp4',
+        #'outtmpl': './playlist/%(playlist_title)s/%(playlist_index)s.%(title)s.mp4',
+        'outtmpl': './playlist/temp/%(playlist_index)s.%(title)s.mp4',
         'writedescription' : 1
     }
     
@@ -77,7 +78,10 @@ def downloadplaylist(path):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.add_post_processor(MyCustomPP())
         print('start the download the ' + path)
-        ydl.download([path])
+        try:
+            ydl.download([path])
+        except yt_dlp.utils.DownloadError:
+            print('다운로드 에러')
     print('playlist downlaod end start download cover mp4')
     with yt_dlp.YoutubeDL(ydl_opts2) as ydl2:
         print('start download cover')

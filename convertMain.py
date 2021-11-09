@@ -20,6 +20,10 @@ def delspecial(strs):
           strs = strs.replace(':', '：')
      if strs.find('/') != -1:
           strs = strs.replace('/', '／')
+     if strs.find('*') != -1:
+          strs = strs.replace('*','')
+     if strs.find('?') != -1:
+          strs = strs.replace('?','？')
      
      return strs
 
@@ -28,8 +32,11 @@ def returnMetaDic(path):
      songdec = f.read()
      desp = songdec.split('\n\n')
      
-     #2번째 문단에 곡 이름과 아티스트 이름 있음
-     desp2 = desp[1].split(' · ')
+     chks = 0
+     if desp[0].find('Provided to YouTube') == -1:
+          chks = 1
+     #2번째 문단에 곡 이름과 아티스트 이름 있음 근데 아닌경우도 있더라
+     desp2 = desp[1 - chks].split(' · ')
      
      songname = ''
      artistname = ''
@@ -51,23 +58,23 @@ def returnMetaDic(path):
      dic = {
           'Songname' : songname,
           'Artistname' : artistname,
-          'Albumname' : delspecial(desp[2]),
-          #'Albumartistname' : desp[3].replace('℗ ', ''),
+          'Albumname' : delspecial(desp[2 - chks]),
+          #'Albumartistname' : desp[3 - chks].replace('℗ ', ''),
           #'Year' : year,
           #'Date' : date,
      }
      
      #앨범아티스트 따로 없는 설명도 있어서
      sk = 0
-     desp[3] = delspecial(desp[3])
-     if desp[3].find('℗ ') != -1:
-          desp[3] = desp[3].replace('℗ ', '')
+     desp[3 - chks] = delspecial(desp[3 - chks])
+     if desp[3 - chks].find('℗ ') != -1:
+          desp[3 - chks] = desp[3 - chks].replace('℗ ', '')
           
           #일부 연도 + 배급사 이름이 적힌 경우 그냥 앨범아티스트 이름에 아티스트 이름넣기   
-          if desp[3].find('19') != -1:
+          if desp[3 - chks].find('19') != -1 and (desp[3 - chks].find('19') < desp[3 - chks].find('20') or desp[3 - chks].find('20') == -1):
                b = 0
                try:
-                    a = desp[3][desp[3].find('19'):desp[3].find('19') + 4]
+                    a = desp[3 - chks][desp[3 - chks].find('19'):desp[3 - chks].find('19') + 4]
                     aa = int(a)
                except ValueError:
                     b = 1
@@ -75,11 +82,11 @@ def returnMetaDic(path):
                if b == 0:
                     dic['Albumartistname'] = dic['Artistname']
                else:
-                    dic['Albumartistname'] = desp[3]
-          elif desp[3].find('20') != -1:
+                    dic['Albumartistname'] = desp[3 - chks]
+          elif desp[3 - chks].find('20') != -1:
                b = 0
                try:
-                    a = desp[3][desp[3].find('20'):desp[3].find('20') + 4]
+                    a = desp[3 - chks][desp[3 - chks].find('20'):desp[3 - chks].find('20') + 4]
                     aa = int(a)
                except ValueError:
                     b = 1
@@ -87,25 +94,26 @@ def returnMetaDic(path):
                if b == 0:
                     dic['Albumartistname'] = dic['Artistname']
                else:
-                    dic['Albumartistname'] = desp[3]
+                    dic['Albumartistname'] = desp[3 - chks]
           else:
-               dic['Albumartistname'] = desp[3]
+               dic['Albumartistname'] = desp[3 - chks]
      else:
           dic['Albumartistname'] = dic['Artistname']
           #3번째칸에 출시 날짜가 적혀있는 설명도 있어서
-          if desp[3].find('Released on: ') != -1:
-               ab = desp[3].replace('Released on: ', '')
+          if desp[3 - chks].find('Released on: ') != -1:
+               ab = desp[3 - chks].replace('Released on: ', '')
                dic['Date'] = ab
                dic['Year'] = ab[:4]
                sk = 1
      
      
      #출시 날짜가 안적혀있는 영상 설명도 있어서
-     if desp[4].find('Released on: ') != -1 and sk == 0:
-          abc = desp[4].replace('Released on: ', '')
+     if desp[4 - chks].find('Released on: ') != -1 and sk == 0:
+          abc = desp[4 - chks].replace('Released on: ', '')
           dic['Date'] = abc
           dic['Year'] = abc[:4]
-          
+     
+     dic['Albumartistname'] = delspecial(dic['Albumartistname'])
      f.close()
      
      return dic
@@ -222,6 +230,7 @@ def downloadPlaylist(getpath):
           if not os.path.exists(lloc):
                os.makedirs(lloc)
           os.rename(i, aaa)
+          print(aaa + ' 으로 작업됨')
           
      try:
           os.rmdir(loc)
@@ -281,6 +290,8 @@ elif choose == '3':
      for i in lists:
           print(str(a) + '번째 작업 시작')
           print(i + ' 다운로드 시작')
+          if i == '':
+               continue
           downloadPlaylist(i)
           print('완료')
           a =  a + 1
