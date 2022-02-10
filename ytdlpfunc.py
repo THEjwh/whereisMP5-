@@ -1,7 +1,10 @@
 import json
+import os
+from tkinter.tix import Tree
 import yt_dlp
 from yt_dlp.postprocessor.common import PostProcessor
 
+kimchi = os.getcwd() + '/ffmpeg/bin'
 
 class MyLogger:
     def debug(self, msg):
@@ -44,6 +47,25 @@ def my_hook(d):
         
 
 
+def downloadvideo(path):
+    
+    ydl_opts = {
+        'format': 'best',
+        'logger': MyLogger(),
+        'cookiesfrombrowser': ('firefox', ),
+        'ffmpeg_location': kimchi,
+        'outtmpl': './video/%(title)s.%(ext)s',
+    }
+    print('비디오 다운 구성중...')
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.add_post_processor(MyCustomPP())    
+        print('start the download the ' + path)
+        try:
+            ydl.download([path])
+        except yt_dlp.utils.DownloadError:
+            print('다운로드 에러')
+    print('종료')
+
 def downloadplaylist(path):
     #940 940
     
@@ -59,7 +81,7 @@ def downloadplaylist(path):
         'logger': MyLogger(),
         'progress_hooks': [my_hook],
         'cookiesfrombrowser': ('firefox', ),
-        'ffmpeg_location': 'C:/Users/user/Downloads/Compressed/ffmpeg-2021-10-14-git-c336c7a9d7-full_build/bin',
+        'ffmpeg_location': kimchi,
         #'outtmpl': './playlist/%(playlist_title)s/%(playlist_index)s.%(title)s.mp4',
         'outtmpl': './playlist/temp/%(playlist_index)s.%(title)s.mp4',
         'writedescription' : 1
@@ -70,7 +92,7 @@ def downloadplaylist(path):
         'format': 'mp4/bestvideo',
         'logger': MyLogger(),
         'cookiesfrombrowser': ('firefox', ),
-        'ffmpeg_location': 'C:/Users/user/Downloads/Compressed/ffmpeg-2021-10-14-git-c336c7a9d7-full_build/bin',
+        'ffmpeg_location': kimchi,
         'outtmpl': './cover/cover.mp4',
         'playlist_items' : '1'
     }
@@ -86,5 +108,40 @@ def downloadplaylist(path):
     with yt_dlp.YoutubeDL(ydl_opts2) as ydl2:
         print('start download cover')
         ydl2.download([path])
+    print('다운로드 종료')
+
+def downloaduserplaylist(path):
+    #940 940
+    
+    #일단 작동하는 파폭의 쿠키를 들고오게 해놧음
+    ydl_opts = {
+    #    'format': '(mp4)[height>=721]',
+        'format': 'bestaudio/best',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '320'
+        }],
+        'logger': MyLogger(),
+        'progress_hooks': [my_hook],
+        'cookiesfrombrowser': ('firefox', ),
+        'ffmpeg_location': kimchi,
+        #'outtmpl': './playlist/%(playlist_title)s/%(playlist_index)s.%(title)s.mp4',
+        'outtmpl': './playlist/artist_temp/%(playlist)s/%(playlist_index)s.%(title)s.mp4',
+        'writedescription' : 1,
+        'consoletitle' : 1,
+        'allow_playlist_files' : 0,
+        #'keepvideo' : 1,
+        'writethumbnail' : 1
+    }
+
+    print('구성중...')
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.add_post_processor(MyCustomPP())
+        print('start the download the ' + path)
+        try:
+            ydl.download([path])
+        except yt_dlp.utils.DownloadError:
+            print('다운로드 에러')
     print('다운로드 종료')
     

@@ -1,4 +1,6 @@
 import csv
+import shutil
+from curses import meta
 import glob
 import os
 import eyed3
@@ -12,6 +14,7 @@ from mutagen.mp3 import MP3
 from pytube import Playlist, YouTube
 
 import ytdlpfunc as ytf
+import makeplaylisturl as mkurl
 
 def delspecial(strs):
      if strs.find('"') != -1:
@@ -24,6 +27,8 @@ def delspecial(strs):
           strs = strs.replace('*','')
      if strs.find('?') != -1:
           strs = strs.replace('?','？')
+     if strs.find('|') != -1:
+          strs = strs.replace('|', '｜')
      
      return strs
 
@@ -58,7 +63,8 @@ def returnMetaDic(path):
      dic = {
           'Songname' : songname,
           'Artistname' : artistname,
-          'Albumname' : delspecial(desp[2 - chks]),
+          'Albumname' : desp[2 - chks]
+          #'Albumname' : delspecial(desp[2 - chks]),.
           #'Albumartistname' : desp[3 - chks].replace('℗ ', ''),
           #'Year' : year,
           #'Date' : date,
@@ -66,7 +72,7 @@ def returnMetaDic(path):
      
      #앨범아티스트 따로 없는 설명도 있어서
      sk = 0
-     desp[3 - chks] = delspecial(desp[3 - chks])
+     #desp[3 - chks] = delspecial(desp[3 - chks])
      if desp[3 - chks].find('℗ ') != -1:
           desp[3 - chks] = desp[3 - chks].replace('℗ ', '')
           
@@ -108,12 +114,12 @@ def returnMetaDic(path):
      
      
      #출시 날짜가 안적혀있는 영상 설명도 있어서
-     if desp[4 - chks].find('Released on: ') != -1 and sk == 0:
+     if len(desp) > 4 and desp[4 - chks].find('Released on: ') != -1 and sk == 0:
           abc = desp[4 - chks].replace('Released on: ', '')
           dic['Date'] = abc
           dic['Year'] = abc[:4]
      
-     dic['Albumartistname'] = delspecial(dic['Albumartistname'])
+    # dic['Albumartistname'] = delspecial(dic['Albumartistname'])
      f.close()
      
      return dic
@@ -141,6 +147,13 @@ def createCoverFile(path):
           cv2.imwrite("cover.jpg", resizeImage)
           break
      vid.release()
+
+def createCoverFile2(path):
+     img = cv2.imread(path)
+     retval, buf = cv2.imencode(".webp", img, [cv2.IMWRITE_WEBP_QUALITY, 100])
+     img = cv2.imdecode(buf,1)
+     crop = img[0:720, 280:280+720]
+     cv2.imwrite("cover.jpg", crop)
 
 def inputAlbumCover(path, option):
      audio = MP3(path, ID3=ID3)
@@ -198,7 +211,7 @@ def downloadPlaylist(getpath):
           
           if first == 1:
                first = 0
-               lloc = lloc + '/' + metadic['Albumartistname'] + '/' + metadic['Albumname'] + '/'
+               lloc = lloc + '/' + delspecial(metadic['Albumartistname']) + '/' + delspecial(metadic['Albumname']) + '/'
                
           
           
@@ -223,23 +236,80 @@ def downloadPlaylist(getpath):
      
      #받고 처리된 mp3들 다 /앨범아티스트명/앨범이름 폴더에 넣고 기존 폴더 지우기
      for i in mp3_listed:
-          i = i.replace('\\\\', '/')
-          loc = loc.replace('*', '')
-          i = i.replace('\\','/')
-          aaa = i.replace(loc, lloc)
-          if not os.path.exists(lloc):
-               os.makedirs(lloc)
-          os.rename(i, aaa)
-          print(aaa + ' 으로 작업됨')
+          try:
+               i = i.replace('\\\\', '/')
+               loc = loc.replace('*', '')
+               i = i.replace('\\','/')
+               aaa = i.replace(loc, lloc)
+               if not os.path.exists(lloc):
+                    os.makedirs(lloc)
+               os.rename(i, aaa)
+               print(aaa + ' 으로 작업됨')
+          except:
+               pass
           
      try:
+          shutil.rmtree(loc)
           os.rmdir(loc)
      except:
           print('')
           pass
      
      print('작업 완료.')
-   
+
+#만들다 만 함수
+def downloadUser(getpath):
+     #유튜브 뮤직의 앨범 플레이리스트를 일반 유튜브 플레이리스트 링크로 바꾸기
+     #if getpath.find('music.') != -1:
+       #   getpath = getpath.replace('music.', '')
+     
+     #if getpath.find('/playlists') == -1:
+      #    getpath = getpath + '/playlists'
+          
+     ytf.downloaduserplaylist(getpath)
+     albumlist = glob.glob('./playlist/artist_temp/*/', recursive = False)
+     r_albumlist = []
+     for i in albumlist:
+          dummy = []
+          covercount = 1
+          trackcount = 1
+          mp3_listed = [file for file in i if file.endswith('.mp3')]
+          maxtrack = len(mp3_listed)
+          for j in os.listdir(i):
+               dummy.append(i+j)
+          r_albumlist.append(dummy)
+     for i in r_albumlist:
+          mp3_listed = [file for file in i if file.endswith('.mp3')]
+          maxtrack = len(mp3_listed)
+          print(mp3_listed[0].replace('mp3', 'mp4.webp'))
+          shutil.copy(mp3_listed[0].replace('mp3', 'mp4.webp'), 'cover.webp')
+          createCoverFile2('cover.webp')
+
+          
+          for j in range(1, maxtrack+1):
+               k = j - 1
+               print(mp3_listed[k] + '의 커버와 메타데이터 등록중')
+               depath = mp3_listed[k].replace('mp3', 'mp4.description')
+               metadic = returnMetaDic(depath)
+               print(metadic)
+               metadic['Tracknum'] = j
+               metadic['MaxTracknum'] = maxtrack
+
+               inputAlbumCover(mp3_listed[k], 0)
+               createMetamp3(mp3_listed[k], metadic)
+
+               deti = './outputs/' + delspecial(metadic['Albumartistname']) + '/' + delspecial(metadic['Albumname'])
+               if not os.path.exists(deti):
+                    os.makedirs(deti)
+               shutil.move(mp3_listed[k], deti)
+          os.remove('cover.jpg')
+          os.remove('cover.webp')
+
+     shutil.rmtree('./playlist/artist_temp')
+                    
+
+
+               
    
 def init():
      if not os.path.exists('./outputs'):
@@ -250,11 +320,17 @@ def init():
           os.makedirs('./playlist')
      if not os.path.exists('./cover'):
           os.makedirs('./cover')
+     if not os.path.exists('./video'):
+          os.makedirs('./video')
+     if not os.path.exists('./ffmpeg'):
+          os.makedirs('./ffmpeg')
           
 print('start')
 init()
 
-print('1.videos의 폴더의 mp4 파일을 mp3로 변환, mp4 파일의 첫 프레임을 커버로 사용 \n2. 유튜브 앨범 플레이리스트 링크로 앨범 받기.\n3. list.txt파일의 플레이리스트 링크 받기.(줄띄움으로 구분)')
+print('1. videos의 폴더의 mp4 파일을 mp3로 변환, mp4 파일의 첫 프레임을 커버로 사용 \n2. 유튜브 앨범 플레이리스트 링크로 앨범 받기.\n3. list.txt파일의 플레이리스트 링크 받기.(줄띄움으로 구분)')
+print('4. video 폴더에 링크 영상 받기\n5. artlist.txt로 각 채널의 모든 플레이리스트 받고 mp3 변환하기\n6. artlist.txt의 각 채널 링크로 그 채널의 모든 앨범 플레이 리스트 list.txt로 출력')
+
 
 choose = '0'
 
@@ -298,16 +374,52 @@ elif choose == '3':
      
      print ('전부 완료!')
      f.close()
-elif choose == '0':
-     abc = '1910'
-     abcd = '19ab'
-     
-     print(abc.find('19'))
-     print(abc[abc.find('19'):abc.find('19') + 4])
-     print(int(abc[abc.find('19'):abc.find('19') + 4]))
-     
-     try:
-          print(int(abcd[abcd.find('19'):abcd.find('19') + 4]))
-     except ValueError:
-          print('swag')
+elif choose == '4':
+     lehu = 1
+     while lehu == 1:
+          getpath = input('\n(-1 is quit)link:')
+          if getpath == '-1':
+               break
+          ytf.downloadvideo(getpath)
+elif choose == '5':
+     print('오래 걸릴수 잇습니다...')
+     f = open('artlist.txt', 'r')
+     lists = f.read().split('\n')
+     print (str(len(lists)) + '개 아티스트 채널 감지')
+     hyperlist = mkurl.makeurllist(lists)
+     print(str(len(hyperlist)) + '개 앨범 링크 수집됨')
+
+     counting = 0
+     for i in hyperlist :
+          counting = counting + 1
+          print(i + '의 작업을 시작합니다.')
+          print(str(counting) + ' / ' + str(len(hyperlist)))
+          if i == '':
+               continue
+          downloadPlaylist(i)
+          print('완료')
+     print('작업이 완료되었습니다.')
+     f.close()
+     #getpath = input('\n(-1 is quit)link:')
+     #downloadUser(getpath)
+     #print('ended')
+elif choose == '6':
+     print('오래 걸릴수 잇습니다...')
+     f = open('artlist.txt', 'r')
+     lists = f.read().split('\n')
+     print (str(len(lists)) + '개 아티스트 채널 감지')
+     hyperlist = mkurl.makeurllist(lists)
+     print(str(len(hyperlist)) + '개 앨범 링크 수집됨')
+
+     f2 = open('list.txt', 'w' )
+     for i in hyperlist:
+          f2.write(i + '\n')
+
+     print('작업이 완료되었습니다.')
+     f.close()
+     f2.close()
+
+else:
+     print('')
+
      
